@@ -562,6 +562,20 @@
             text-align: center;
             font-size: 13px;
         }
+ 
+        .pill { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+        .pill button { border: 1px solid var(--l); background: var(--in); color: var(--t); padding: 6px 12px; border-radius: 999px; font: inherit; font-size: 13px; cursor: pointer; }
+        .pill button.on { color: #fff; border-color: transparent; }
+        .pill button.on.ม { background: #16a34a; } .pill button.on.ส { background: #f59e0b; } .pill button.on.ข { background: #ef4444; } .pill button.on.ล { background: #3b82f6; } .pill button.on.n { background: var(--p); }
+        .tg.r { background: #fef3c7; color: #b45309; } .tg.z { background: #fee2e2; color: #b91c1c; }
+        table.sc2 th, table.sc2 td { white-space: nowrap; text-align: center; font-size: 13px; }
+        .sticky1 { position: sticky; left: 0; background: var(--bg); z-index: 2; }
+        .cell { display: inline-block; min-width: 46px; padding: 3px 8px; border-radius: 8px; cursor: pointer; }
+        .cell:hover { outline: 2px solid #38d6ff; }
+        .c-ok { background: #dcfce7; color: #166534; } .c-wait { background: #dbeafe; color: #1d4ed8; } .c-miss { background: #fee2e2; color: #b91c1c; font-weight: 600; } .c-todo { background: #f1f5f9; color: #64748b; } .c-run { background: #fef3c7; color: #b45309; }
+        .wheelbox { display: grid; grid-template-columns: minmax(300px, 1.1fr) 1fr; gap: 16px; align-items: start; }
+        #wc { width: min(420px, 100%); height: auto; aspect-ratio: 1; display: block; margin: auto; }
+        @media (max-width: 800px) { .wheelbox { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -666,7 +680,8 @@
             catch (e) { $('#app').innerHTML = '<div class=card style="max-width:560px;margin:10vh auto"><h3>เชื่อมต่อไม่ได้</h3><p>' + esc(e.message || e) + '</p></div>'; }
         }
         let saving = Promise.resolve();
-        const save = () => (saving = saving.then(doSave).catch(e => toast('บันทึกไม่สำเร็จ: ' + (e.message || e))));
+        let PEND = 0;
+        const save = () => { PEND++; return (saving = saving.then(doSave).catch(e => toast('บันทึกไม่สำเร็จ: ' + (e.message || e))).finally(() => PEND--)); };
         async function doSave() {
             try { localStorage.dark = D.dark ? '1' : ''; } catch (e) {}
             const cur = {};
@@ -750,17 +765,18 @@
  
         function gr(p) {
             if (p == null) return { l: '-', gp: null };
-            const a = [[80, 'A', 4], [75, 'B+', 3.5], [70, 'B', 3], [65, 'C+', 2.5], [60, 'C', 2], [55, 'D+', 1.5], [50, 'D', 1]].find(x => p >= x[0]);
-            return a ? { l: a[1], gp: a[2] } : { l: 'F', gp: 0 };
+            const a = [[80, '4', 4], [75, '3.5', 3.5], [70, '3', 3], [65, '2.5', 2.5], [60, '2', 2], [55, '1.5', 1.5], [50, '1', 1]].find(x => p >= x[0]);
+            return a ? { l: a[1], gp: a[2] } : { l: '0', gp: 0 };
         }
         
         function calc(c, u) {
-            let a = 0, m = 0;
-            D.tasks.filter(t => t.c == c).forEach(t => { const s = t.s[u]; if (s && s.g != null) { a += +s.g; m += +t.max; } });
-            const p = m ? a / m * 100 : null;
+            let a = 0, m = 0; const k = {};
+            D.tasks.filter(t => t.c == c).forEach(t => { const s = t.s[u]; if (s && s.g != null && !s.run) { a += +s.g; m += +t.max; const q = cat(t); (k[q] = k[q] || { a: 0, m: 0 }); k[q].a += +s.g; k[q].m += +t.max; } });
+            let p = m ? a / m * 100 : null; const cl = D.classes.find(x => x.id == c), w = cl && cw(cl);
+            if (w && m) { let sw = 0, sp = 0; for (const q in k) if (k[q].m && +w[q] > 0) { sw += +w[q]; sp += +w[q] * k[q].a / k[q].m; } if (sw) p = sp / sw * 100; }
             return { a, m, p, ...gr(p) };
         }
-        
+ 
         const gpa = u => {
             const v = D.classes.filter(c => c.m.includes(u)).map(c => calc(c.id, u).gp).filter(x => x != null);
             return v.length ? (v.reduce((a, b) => a + b) / v.length).toFixed(2) : '-';
@@ -839,16 +855,16 @@
  
         const logout = async () => { await sb.auth.signOut(); AU = null; me = null; D = emptyD(); auth(); };
  
-        const NT = [['home', '🏠', 'หน้าหลัก'], ['classes', '🏫', 'จัดการห้องเรียน'], ['att', '✅', 'เช็คเวลาเรียน'], ['att_history', '📅', 'ประวัติเช็คชื่อ'], ['act', '📝', 'กิจกรรม/แบบประเมิน'], ['exam', '🧪', 'การสอบ'], ['hw', '📚', 'งาน/การบ้าน'], ['grades', '📊', 'ผลการเรียน'], ['export', '📤', 'ส่งออกใบเกรด'], ['report', '📈', 'รายงาน'], ['notes', '🔔', 'แจ้งเตือน']],
-              NS = [['home', '🏠', 'หน้าหลัก'], ['tt', '🗓️', 'ตารางเรียน'], ['att', '✅', 'เช็คเวลาเรียน'], ['hw', '📚', 'งาน/การบ้าน'], ['act', '📝', 'กิจกรรม'], ['exam', '🧪', 'การสอบ'], ['grades', '📊', 'ผลการเรียน'], ['notes', '🔔', 'แจ้งเตือน']];
+        const NT = [['home', '🏠', 'หน้าหลัก'], ['classes', '🏫', 'จัดการห้องเรียน'], ['att', '✅', 'เช็คเวลาเรียน'], ['att_history', '📅', 'ประวัติเช็คชื่อ'], ['scores', '🗂️', 'ประวัติคะแนน'], ['act', '📝', 'กิจกรรม/แบบประเมิน'], ['exam', '🧪', 'การสอบ'], ['hw', '📚', 'งาน/การบ้าน'], ['grades', '📊', 'ผลการเรียน'], ['export', '📤', 'ส่งออกใบเกรด'], ['report', '📈', 'รายงาน'], ['wheel', '🎡', 'วงล้อหรรษา'], ['notes', '🔔', 'แจ้งเตือน']],
+              NS = [['home', '🏠', 'หน้าหลัก'], ['tt', '🗓️', 'ตารางเรียน'], ['att', '✅', 'เช็คเวลาเรียน'], ['hw', '📚', 'งาน/การบ้าน'], ['act', '📝', 'กิจกรรม'], ['exam', '🧪', 'การสอบ'], ['scores', '🗂️', 'ประวัติคะแนน'], ['grades', '📊', 'ผลการเรียน'], ['notes', '🔔', 'แจ้งเตือน']];
         
-        const go = v => { V = v; R(); scrollTo(0, 0); };
+        const go = v => { V = v; sel.nc = ''; R(); scrollTo(0, 0); };
  
         function R() {
             document.documentElement.dataset.t = D.dark ? 'd' : '';
             if (!me) return auth();
             const nav = (isT() ? NT : NS).concat(me.role == 'admin' ? [['users', '👥', 'จัดการผู้ใช้']] : [], [['set', '⚙️', 'ตั้งค่า']]);
-            const VW = { home, classes, att, att_history: attHistoryView, act: () => tasks('act'), exam: () => tasks('ex'), hw: () => tasks('hw'), grades, export: xp, report, notes, set, users, tt };
+            const VW = { home, classes, att, att_history: attHistoryView, scores, wheel: wheelV, act: () => tasks('act'), exam: () => tasks('ex'), hw: () => tasks('hw'), grades, export: xp, report, notes, set, users, tt };
             $('#app').innerHTML = `<div class=lay><aside class=side><div class=pf><div class=av style="${me.ph ? `background:url(${me.ph}) center/cover` : ''}">${me.ph ? '' : esc(me.name[0])}</div><div><b>${esc(me.name)}</b><small>${{ admin: 'ผู้ดูแลระบบ', teacher: 'ครู', student: 'นักเรียน' }[me.role]}</small></div></div>${nav.map(n => `<button class="nv ${V == n[0] ? 'on' : ''}" onclick="go('${n[0]}')"><span>${n[1]}</span> <span>${n[2]}</span></button>`).join('')}</aside><main>${(VW[V] || home)()}</main></div>`;
         }
  
@@ -918,7 +934,7 @@
         function mem(id) {
             sel.mc = id;
             const c = D.classes.find(x => x.id == id), av = D.users.filter(u => u.role == 'student' && !c.m.includes(u.id));
-            modal('นักเรียนใน ' + esc(c.name + ' ' + c.sub), `<p class=mu>รหัสเข้าห้อง: <code>${c.code}</code> (นักเรียนใช้เข้าร่วมเอง)</p>` + (c.m.length ? c.m.map(u => `<div class=li><span>${avs(gu(u) || { name: '?' })} ${esc(nm(u))}</span><span><label class="b s g">📷<input type=file accept=image/* hidden onchange="setPh('${u}',this)"></label> <button class="b s d" onclick="rmm('${id}','${u}')">ลบ</button></span></div>`).join('') : emp('ยังไม่มีนักเรียน')) + (av.length ? `<div class=li><select id=f1>${av.map(u => `<option value=${u.id}>${esc(u.name)}</option>`).join('')}</select><button class="b s" onclick="addm('${id}')">+ เพิ่ม</button></div>` : '<p class=mu>ไม่มีนักเรียนที่เพิ่มได้เพิ่มเติม</p>'));
+            modal('นักเรียนใน ' + esc(c.name + ' ' + c.sub), `<p class=mu>รหัสเข้าห้อง: <code>${c.code}</code> (นักเรียนใช้เข้าร่วมเอง)</p><div class=ar style="justify-content:flex-start;margin:0 0 8px"><button class="b s g" onclick="autoNo('${id}')">🔢 เรียงเลขที่ตามชื่ออัตโนมัติ</button></div>` + (c.m.length ? c.m.map(u => `<div class=li><span>${avs(gu(u) || { name: '?' })} <input type=number min=1 value="${rno(c, u)}" placeholder="เลขที่" title="เลขที่" style="width:62px;display:inline-block;padding:4px 6px" onchange="setNo('${id}','${u}',this.value)"> ${esc(nm(u))}</span><span><label class="b s g">📷<input type=file accept=image/* hidden onchange="setPh('${u}',this)"></label> <button class="b s d" onclick="rmm('${id}','${u}')">ลบ</button></span></div>`).join('') : emp('ยังไม่มีนักเรียน')) + (av.length ? `<div class=li><select id=f1>${av.map(u => `<option value=${u.id}>${esc(u.name)}</option>`).join('')}</select><button class="b s" onclick="addm('${id}')">+ เพิ่ม</button></div>` : '<p class=mu>ไม่มีนักเรียนที่เพิ่มได้เพิ่มเติม</p>'));
         }
  
         const addm = id => { D.classes.find(c => c.id == id).m.push(g('f1')); save(); mem(id); R(); },
@@ -953,85 +969,6 @@
             R();
         }
         
-        function tAtt() {
-            const cs = MC();
-            if (!cs.length) return head('เช็คเวลาเรียน') + emp('ยังไม่มีห้องเรียน');
-            sel.ac = cs.find(c => c.id == sel.ac) ? sel.ac : cs[0].id;
-            sel.ad = sel.ad || today();
-            const c = cs.find(x => x.id == sel.ac), a = D.att[c.id + '|' + sel.ad] || {};
-            return head('เช็คเวลาเรียน') + `<div class=card><div class=r3><label class=fl>ห้องเรียน<select onchange="sel.ac=this.value;R()">${cs.map(x => `<option value=${x.id} ${x.id == c.id ? 'selected' : ''}>${esc(x.name + ' ' + x.sub)}</option>`).join('')}</select></label><label class=fl>วันที่<input type=date value=${sel.ad} onchange="sel.ad=this.value||today();R()"></label></div>${c.m.length ? `<div class=tw><table><tr><th>#</th><th>ชื่อ-นามสกุล</th><th>สถานะ</th></tr>${c.m.map((u, i) => `<tr><td>${i + 1}</td><td>${esc(nm(u))}</td><td><select class=as data-u=${u}>${[['-', 'ยังไม่เช็ค'], ['ม', 'มา'], ['ส', 'สาย'], ['ข', 'ขาด'], ['ล', 'ลา']].map(o => `<option value=${o[0]} ${(a[u] || '-') == o[0] ? 'selected' : ''}>${o[1]}</option>`).join('')}</select></td></tr>`).join('')}</table></div><div class=ar><button class="b g" onclick=allp()>มาทั้งหมด</button><button class="b g" onclick="aex('csv')">Excel</button><button class="b g" onclick=aex()>PDF</button><button class=b onclick=asv()>บันทึกข้อมูล</button></div>` : emp('ห้องนี้ยังไม่มีนักเรียน')}</div>`;
-        }
-
-        function attHistoryView() {
-            const cs = MC();
-            if (!cs.length) return head('ประวัติเช็คชื่อ') + emp('ยังไม่มีห้องเรียน');
-            
-            sel.hc = cs.find(c => c.id == sel.hc) ? sel.hc : cs[0].id;
-            sel.hy = sel.hy || new Date().getFullYear();
-            sel.hm = sel.hm || '';
-            sel.hd = sel.hd || '';
-
-            const c = cs.find(x => x.id == sel.hc);
-            
-            const historyDates = Object.keys(D.att).filter(k => {
-                const [cid, dateStr] = k.split('|');
-                if (cid !== c.id) return false;
-                const d = new Date(dateStr);
-                if (d.getFullYear() != sel.hy) return false;
-                if (sel.hm && (d.getMonth() + 1) != sel.hm) return false;
-                if (sel.hd && d.getDate() != sel.hd) return false;
-                return true;
-            }).map(k => k.split('|')[1]).sort().reverse();
-
-            const months = [['', 'ทุกเดือน'], [1, 'มกราคม'], [2, 'กุมภาพันธ์'], [3, 'มีนาคม'], [4, 'เมษายน'], [5, 'พฤษภาคม'], [6, 'มิถุนายน'], [7, 'กรกฎาคม'], [8, 'สิงหาคม'], [9, 'กันยายน'], [10, 'ตุลาคม'], [11, 'พฤศจิกายน'], [12, 'ธันวาคม']];
-
-            return head('ประวัติเช็คชื่อย้อนหลัง') + `
-            <div class=card>
-                <div class=r4>
-                    <label class=fl>วิชา / ชั้นเรียน<select onchange="sel.hc=this.value;R()">${cs.map(x => `<option value=${x.id} ${x.id == c.id ? 'selected' : ''}>${esc(x.name + ' ' + x.sub)}</option>`).join('')}</select></label>
-                    <label class=fl>ปี<select onchange="sel.hy=this.value;R()">${[2024, 2025, 2026, 2027].map(y => `<option value="${y}" ${y == sel.hy ? 'selected' : ''}>${y + 543}</option>`).join('')}</select></label>
-                    <label class=fl>เดือน<select onchange="sel.hm=this.value;R()">${months.map(m => `<option value="${m[0]}" ${m[0] == sel.hm ? 'selected' : ''}>${m[1]}</option>`).join('')}</select></label>
-                    <label class=fl>วันที่<input type=number min=1 max=31 placeholder="ทุกวัน" value="${sel.hd}" onchange="sel.hd=this.value;R()"></label>
-                </div>
-                ${historyDates.length ? `<div class=tw style="margin-top:14px">
-                    <table>
-                        <tr><th>วันที่</th>${c.m.map(u => `<th>${esc(nm(u))}</th>`).join('')}</tr>
-                        ${historyDates.map(dt => {
-                            const rec = D.att[c.id + '|' + dt] || {};
-                            return `<tr><td><b>${fd(dt)}</b></td>${c.m.map(u => `<td><span class="tg ${rec[u] || '-'}">${L[rec[u]] || 'ยังไม่เช็ค'}</span></td>`).join('')}</tr>`;
-                        }).join('')}
-                    </table>
-                </div>
-                <div class=ar><button class="b g" onclick="exportAttHistory('csv')">Excel</button><button class="b g" onclick="exportAttHistory('pdf')">PDF</button></div>` : emp('ไม่พบประวัติการเช็คชื่อตามเงื่อนไขที่เลือก')}
-            </div>`;
-        }
-
-        function exportAttHistory(type) {
-            const c = D.classes.find(x => x.id == sel.hc);
-            const historyDates = Object.keys(D.att).filter(k => k.startsWith(c.id + '|')).map(k => k.split('|')[1]).sort();
-            const rows = [['วันที่', ...c.m.map(u => nm(u))]];
-            historyDates.forEach(dt => {
-                const rec = D.att[c.id + '|' + dt] || {};
-                rows.push([fd(dt), ...c.m.map(u => L[rec[u]] || 'ยังไม่เช็ค')]);
-            });
-            ex(rows, 'ประวัติเช็คชื่อ_' + c.name + '_' + c.sub, type);
-        }
- 
-        const allp = () => document.querySelectorAll('.as').forEach(s => s.value = 'ม');
-        
-        function asv() {
-            const o = {};
-            document.querySelectorAll('.as').forEach(s => { if (s.value != '-') o[s.dataset.u] = s.value; });
-            D.att[sel.ac + '|' + sel.ad] = o;
-            save();
-            toast('บันทึกการเช็คชื่อแล้ว');
-        }
-        
-        function aex(f) {
-            const r = [['ชื่อ-นามสกุล', 'สถานะ']];
-            document.querySelectorAll('.as').forEach(s => r.push([nm(s.dataset.u), s.value == '-' ? 'ยังไม่เช็ค' : L[s.value]]));
-            ex(r, 'เช็คชื่อ ' + cn(sel.ac) + ' ' + sel.ad, f);
-        }
  
         function sAtt() {
             const cs = MC(), t = today(), isOpen = D.attOpen[t] || false, td = cs.filter(c => c.day == new Date().getDay());
@@ -1089,12 +1026,12 @@
         const TY = { hw: 'งาน/การบ้าน', act: 'กิจกรรม/แบบประเมิน', ex: 'การสอบ' }, KD = { q: 'แบบทดสอบท้ายบท', m: 'สอบกลางภาค', f: 'สอบปลายภาค' };
         
         function tasks(ty) {
-            const T = TY[ty], ex = ty == 'ex', ids = MC().map(c => c.id), ts = D.tasks.filter(t => t.y == ty && ids.includes(t.c)).sort((a, b) => (a.d || 'z').localeCompare(b.d || 'z'));
+            const T = TY[ty], ex = ty == 'ex', ids = MC().map(c => c.id), ts = D.tasks.filter(t => t.y == ty && ids.includes(t.c) && (isT() || !t.man)).sort((a, b) => (a.d || 'z').localeCompare(b.d || 'z'));
             const inf = t => ex ? `${KD[t.k]} · ${t.dur} นาที · ${t.q.length} ข้อ` : 'กำหนด ' + fd(t.d);
             
             if (isT()) return head(T, `<button class=b onclick="tf('${ty}')">+ สร้าง</button>`) + (ts.length ? `<div class=gr2>${ts.map(t => {
                 const c = D.classes.find(x => x.id == t.c), n = Object.values(t.s).filter(s => !s.run).length;
-                return `<div class=card><b>${esc(t.t)}</b>${ex ? ` <span class="tg ${t.open ? 'ม' : 'ข'}">${t.open ? 'เปิดสอบ' : 'ปิดสอบ'}</span>` : ''}<p class=mu>${esc(c.name + ' ' + c.sub)} · ${inf(t)} · เต็ม ${t.max}</p><p>${esc(t.ds)}</p><div class=bar><i style="width:${c.m.length ? n / c.m.length * 100 : 0}%"></i></div><small>${ex ? 'สอบแล้ว' : 'ส่งแล้ว'} ${n}/${c.m.length}</small><div class=ar>${ex ? `<button class="b s g" onclick="tog('${t.id}')">${t.open ? 'ปิดสอบ' : 'เปิดสอบ'}</button>` : ''}<button class="b s" onclick="tg('${t.id}')">${ex ? 'ดูผลสอบ' : 'ตรวจงาน'}</button><button class="b s g" onclick="tf('${ty}','${t.id}')">แก้ไข</button><button class="b s d" onclick="tdel('${t.id}')">ลบ</button></div></div>`;
+                return `<div class=card><b>${esc(t.t)}</b> <span class=tg>${CATS[cat(t)]}</span>${t.man ? ' <span class=tg>ครูบันทึกเอง</span>' : ''}${ex ? ` <span class="tg ${t.open ? 'ม' : 'ข'}">${t.open ? 'เปิดสอบ' : 'ปิดสอบ'}</span>` : ''}<p class=mu>${esc(c.name + ' ' + c.sub)} · ${inf(t)} · เต็ม ${t.max}</p><p>${esc(t.ds)}</p><div class=bar><i style="width:${c.m.length ? n / c.m.length * 100 : 0}%"></i></div><small>${ex ? 'สอบแล้ว' : 'ส่งแล้ว'} ${n}/${c.m.length}</small><div class=ar>${ex ? `<button class="b s g" onclick="tog('${t.id}')">${t.open ? 'ปิดสอบ' : 'เปิดสอบ'}</button>` : ''}<button class="b s" onclick="tg('${t.id}')">${ex ? 'ดูผลสอบ' : 'ตรวจงาน'}</button><button class="b s g" onclick="tf('${ty}','${t.id}')">แก้ไข</button><button class="b s d" onclick="tdel('${t.id}')">ลบ</button></div></div>`;
             }).join('')}</div>` : emp('ยังไม่มีรายการ'));
             
             return head(T) + (ts.length ? `<div class=gr2>${ts.map(t => {
@@ -1124,16 +1061,16 @@
             const cs = MC();
             if (!cs.length) return toast('สร้างห้องเรียนก่อน');
             const t = D.tasks.find(x => x.id == id) || {}, ex = ty == 'ex';
-            modal(id ? 'แก้ไขรายการ' : 'สร้างรายการ', fld('ห้องเรียน', 'f1', t.c, 'select', cs.map(c => [c.id, c.name + ' ' + c.sub])) + fld('ชื่อ', 'f2', t.t) + (ex ? `<div class=card style="padding:10px;margin:10px 0;background:rgba(0,0,0,0.03)"><b>⚡ คัดลอกข้อความนำเข้าหลายข้อ</b><textarea id="import_text" rows="4" placeholder="วางข้อสอบตรงนี้ ตัวอย่าง:\n1. ข้อใดคือคำตอบ\nก. ตัวเลือก 1\nข. ตัวเลือก 2*\nค. ตัวเลือก 3\nง. ตัวเลือก 4"></textarea><button class="b s g" style="margin-top:6px" onclick="parseTextExam()">นำเข้าข้อความ</button><hr style="margin:10px 0;border:0;border-top:1px solid var(--l)"><label class=fl>หรืออัปโหลดไฟล์ (.txt หรือ .json)<input type=file id="import_file" accept=".txt,.json" onchange="parseFileExam(this)"></label></div><div class=r2>${fld('ประเภทการสอบ', 'f6', t.k || 'q', 'select', Object.entries(KD))}${fld('เวลาสอบ (นาที)', 'f3', t.dur || 30, 'number')}</div>${fld('สถานะ', 'f7', t.open ? 1 : 0, 'select', [[0, 'ปิดสอบ'], [1, 'เปิดสอบ']])}<div id=qs>${(t.q || []).map(q => qb(q)).join('')}</div><button class="b g s" onclick=qadd()>+ เพิ่มข้อสอบทีละข้อ</button>` : `<div class=r2>${fld('กำหนดส่ง', 'f3', t.d, 'date')}${fld('คะแนนเต็ม', 'f4', t.max || 10, 'number')}</div>`) + fld('รายละเอียด', 'f5', t.ds, 'area'), `tsv('${ty}','${id || ''}')`);
+            modal(id ? 'แก้ไขรายการ' : 'สร้างรายการ', fld('ห้องเรียน', 'f1', t.c || sel.sc, 'select', cs.map(c => [c.id, c.name + ' ' + c.sub])) + fld('ชื่อ', 'f2', t.t) + (ex ? `<div class=card style="padding:10px;margin:10px 0;background:rgba(0,0,0,0.03)"><b>⚡ คัดลอกข้อความนำเข้าหลายข้อ</b><textarea id="import_text" rows="4" placeholder="วางข้อสอบตรงนี้ ตัวอย่าง:\n1. ข้อใดคือคำตอบ\nก. ตัวเลือก 1\nข. ตัวเลือก 2*\nค. ตัวเลือก 3\nง. ตัวเลือก 4"></textarea><button class="b s g" style="margin-top:6px" onclick="parseTextExam()">นำเข้าข้อความ</button><hr style="margin:10px 0;border:0;border-top:1px solid var(--l)"><label class=fl>หรืออัปโหลดไฟล์ (.txt หรือ .json)<input type=file id="import_file" accept=".txt,.json" onchange="parseFileExam(this)"></label></div><div class=r2>${fld('ประเภทการสอบ', 'f6', t.k || 'q', 'select', Object.entries(KD))}${fld('เวลาสอบ (นาที)', 'f3', t.dur || 30, 'number')}</div>${fld('สถานะ', 'f7', t.open ? 1 : 0, 'select', [[0, 'ปิดสอบ'], [1, 'เปิดสอบ']])}<div id=qs>${(t.q || []).map(q => qb(q)).join('')}</div><button class="b g s" onclick=qadd()>+ เพิ่มข้อสอบทีละข้อ</button>` : `<div class=r2>${fld('กำหนดส่ง', 'f3', t.d, 'date')}${fld('คะแนนเต็ม', 'f4', t.max || 10, 'number')}</div><div class=r2>${fld('หมวดคะแนน', 'f8', t.cat || sel.nc || 'col', 'select', CK.map(k => [k, CATS[k]]))}${fld('วิธีเก็บคะแนน', 'f9', t.man ?? (sel.nc == 'mid' || sel.nc == 'fin') ? 1 : 0, 'select', [[0, 'นักเรียนส่งงานในระบบ'], [1, 'ครูบันทึกคะแนนเอง (สอบกระดาษ ฯลฯ)']])}</div>`) + fld('รายละเอียด', 'f5', t.ds, 'area'), `tsv('${ty}','${id || ''}')`);
             if (ex && !t.q) qadd();
         }
-
+ 
         function parseTextExam() {
             const raw = $('#import_text').value.trim();
             if (!raw) return toast('วางข้อความข้อสอบก่อน');
             const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
             let currentQ = null, questions = [];
-
+ 
             lines.forEach(line => {
                 if (/^\d+[\.\)]/.test(line) || !currentQ) {
                     if (currentQ && currentQ.c.length >= 2) questions.push(currentQ);
@@ -1148,13 +1085,13 @@
                 }
             });
             if (currentQ && currentQ.c.length >= 2) questions.push(currentQ);
-
+ 
             if (!questions.length) return toast('รูปแบบข้อความไม่ถูกต้อง');
             questions.forEach(q => $('#qs').insertAdjacentHTML('beforeend', qb(q)));
             toast(`นำเข้าข้อสอบสำเร็จ ${questions.length} ข้อ`);
             $('#import_text').value = '';
         }
-
+ 
         function parseFileExam(input) {
             const file = input.files[0];
             if (!file) return;
@@ -1189,13 +1126,14 @@
             if (!t) { t = { id: uid(), y: ty, s: {} }; D.tasks.push(t); }
             Object.assign(t, { c: g('f1'), t: n, ds: g('f5') });
             if (ty == 'ex') Object.assign(t, { k: g('f6'), dur: Math.max(1, +g('f3') || 30), open: g('f7') == '1', q, max: q.reduce((a, x) => a + x.p, 0), d: '' });
-            else Object.assign(t, { d: g('f3'), max: Math.max(1, +g('f4') || 10) });
+            else Object.assign(t, { d: g('f3'), max: Math.max(1, +g('f4') || 10), cat: g('f8'), man: g('f9') == '1' });
+            sel.nc = '';
             save();
             cm();
             R();
         }
  
-        const tog = id => { const t = D.tasks.find(x => x.id == id); t.open = !t.open; save(); R(); },
+        const tog = id => { const t = D.tasks.find(x => x.id == id); if (t.open) t.done = 1; t.open = !t.open; save(); R(); },
               tdel = id => {
                   if (!confirm('ลบรายการนี้?')) return;
                   const t = D.tasks.find(x => x.id == id);
@@ -1351,7 +1289,7 @@
             if (!isT()) {
                 const rows = cs.map(c => {
                     const r = calc(c.id, me.id);
-                    return `<tr><td>${esc(c.sub)}</td><td>${r.m ? r.p.toFixed(1) : '-'}</td><td><b>${r.l}</b></td><td>${rk(c).find(y => y.u == me.id).k}/${c.m.length}</td></tr>`;
+                    return `<tr><td>${esc(c.sub)}</td><td>${r.m ? r.p.toFixed(1) : '-'}</td><td><b>${gst(c, me.id).lab}</b></td><td>${rk(c).find(y => y.u == me.id).k}/${c.m.length}</td></tr>`;
                 }).join('');
                 return head('ผลการเรียน', cs.length ? '<button class=b onclick="prev(tr(me.id))">🖨️ พิมพ์ใบเกรด</button>' : '') + `<div class="card tw">${cs.length ? `<table><tr><th>รายวิชา</th><th>คะแนนเฉลี่ย (%)</th><th>เกรด</th><th>ลำดับในห้อง</th></tr>${rows}</table><p class=gpa>GPA รวม <b>${gpa(me.id)}</b></p>` : emp('ยังไม่ได้เข้าร่วมห้องเรียน')}</div>`;
             }
@@ -1375,7 +1313,7 @@
                 const r = x.r, w = [x.k, nm(x.u)];
                 if (o.s) w.push(r.a, r.m);
                 if (o.a) w.push(r.p == null ? '-' : r.p.toFixed(1));
-                if (o.g) w.push(r.l, r.gp == null ? '-' : r.gp.toFixed(2));
+                if (o.g) w.push(gst(c, x.u).lab, r.gp == null ? '-' : r.gp.toFixed(2));
                 return w;
             })];
         }
@@ -1386,8 +1324,8 @@
             cs.forEach((c, i) => {
                 const r = calc(c.id, u), k = rk(c).find(y => y.u == u).k;
                 if (r.gp != null) gp.push(r.gp);
-                a += `<tr><td>${i + 1}</td><td class=l>${esc(c.sub)}<br><small>${esc(c.name)}</small></td><td class=l>${esc((gu(c.o) || {}).name || '-')}</td><td>${r.a}</td><td>${r.m}</td><td>${r.p == null ? '-' : r.p.toFixed(1)}</td><td><b>${r.l}</b></td><td>${k}/${c.m.length}</td></tr>`;
-                d += `<h4>${i + 1}. ${esc(c.sub)} (${esc(c.name)}) — คะแนนที่ได้ ${r.a}/${r.m} เกรด ${r.l} ลำดับที่ ${k}/${c.m.length}</h4><table><tr><th>รายการ</th><th>ประเภท</th><th>คะแนนที่ได้</th><th>คะแนนเต็ม</th></tr>${D.tasks.filter(t => t.c == c.id).map(t => { const s = t.s[u], ok = s && s.g != null && !s.run; return `<tr><td class=l>${esc(t.t)}</td><td>${TY[t.y]}</td><td>${ok ? s.g : '-'}</td><td>${t.max}</td></tr>`; }).join('') || '<tr><td colspan=4>ยังไม่มีรายการ</td></tr>'}</table>`;
+                a += `<tr><td>${i + 1}</td><td class=l>${esc(c.sub)}<br><small>${esc(c.name)}</small></td><td class=l>${esc((gu(c.o) || {}).name || '-')}</td><td>${r.a}</td><td>${r.m}</td><td>${r.p == null ? '-' : r.p.toFixed(1)}</td><td><b>${gst(c, u).lab}</b></td><td>${k}/${c.m.length}</td></tr>`;
+                d += `<h4>${i + 1}. ${esc(c.sub)} (${esc(c.name)}) — คะแนนที่ได้ ${r.a}/${r.m} เกรด ${gst(c, u).lab} ลำดับที่ ${k}/${c.m.length}</h4><table><tr><th>รายการ</th><th>ประเภท</th><th>คะแนนที่ได้</th><th>คะแนนเต็ม</th></tr>${D.tasks.filter(t => t.c == c.id).map(t => { const s = t.s[u], ok = s && s.g != null && !s.run; return `<tr><td class=l>${esc(t.t)}</td><td>${TY[t.y]}</td><td>${ok ? s.g : '-'}</td><td>${t.max}</td></tr>`; }).join('') || '<tr><td colspan=4>ยังไม่มีรายการ</td></tr>'}</table>`;
             });
             return `<div class=tr><div class=trh><div class=trl><b style="font-size:17px">${esc(x.name)}</b><br>ชั้นเรียน: ${esc([...new Set(cs.map(c => c.name))].join(', ') || '-')}<br>ชื่อผู้ใช้: ${esc(x.u || '-')}<br>วันที่ออกเอกสาร: ${fd(today())}</div><div class=trc><h1>ใบรายงานผลการเรียน</h1><p>Student Grade Report</p></div><div class=trp>${x.ph ? `<img src="${x.ph}">` : 'ติดรูปถ่าย'}</div></div><h3 style="text-align:center;margin:12px 0 0">สรุปผลการเรียนรายวิชา</h3><table><tr><th>ที่</th><th>รายวิชา</th><th>ครูผู้สอน</th><th>คะแนนที่ได้</th><th>คะแนนเต็ม</th><th>ร้อยละ</th><th>เกรด</th><th>ลำดับในห้อง</th></tr>${a || '<tr><td colspan=8>ยังไม่มีรายวิชา</td></tr>'}</table><p style="text-align:right"><b>เกรดเฉลี่ย (GPA): ${gp.length ? (gp.reduce((p, q) => p + q) / gp.length).toFixed(2) : '-'}</b></p><h3 style="margin-top:10px">รายละเอียดคะแนนแต่ละรายวิชา</h3>${d}<div class=sg><div>.................................<br>ครูผู้สอน</div><div>.................................<br>ผู้ดูแลระบบ</div></div></div>`;
         }
@@ -1427,7 +1365,7 @@
         const report = () => head('รายงาน', `<button class="b g" onclick="csv(rrows(),'รายงานห้องเรียน')">Excel</button> <button class=b onclick="pr('รายงานภาพรวมห้องเรียน',rrows())">PDF</button>`) + `<div class=card>${rrows().length > 1 ? tbl(rrows()) : emp('ยังไม่มีข้อมูล')}</div>`;
  
         function nts() {
-            const ids = MC().map(c => c.id), l = D.notes.filter(n => me.role == 'admin' || n.o == me.id || !n.c || ids.includes(n.c)).map(n => ({ ...n, t: n.t + (n.b ? ' — ' + n.b : ''), d: n.d }));
+            const ids = MC().map(c => c.id), l = D.notes.filter(n => (!n.to || n.to == me.id || n.o == me.id || me.role == 'admin') && (me.role == 'admin' || n.o == me.id || !n.c || ids.includes(n.c))).map(n => ({ ...n, t: n.t + (n.b ? ' — ' + n.b : ''), d: n.d }));
             if (!isT()) D.tasks.filter(t => ids.includes(t.c) && !t.s[me.id] && t.d).forEach(t => {
                 const dd = (new Date(t.d + 'T00:00') - new Date(today() + 'T00:00')) / 864e5;
                 if (dd <= 3) l.push({ id: t.id, t: `${dd < 0 ? 'เลยกำหนด' : 'ใกล้กำหนด'}: ${t.t} (${cn(t.c)}) ${fd(t.d)}`, d: t.d, a: 1 });
@@ -1539,10 +1477,248 @@
             }
         };
  
+        /* ================= v2: ประวัติคะแนน · วงล้อหรรษา · เช็คชื่อแก้ไขได้ ================= */
+const CATS = { col: 'คะแนนเก็บ', mid: 'กลางภาค', fin: 'ปลายภาค', oth: 'อื่น ๆ' }, CK = Object.keys(CATS);
+const cat = t => t.y == 'ex' ? ({ m: 'mid', f: 'fin' }[t.k] || 'col') : (t.cat || 'col');
+const rno = (c, u) => (c.no || {})[u] || '';
+const ms = c => [...c.m].sort((a, b) => (+rno(c, a) || 9999) - (+rno(c, b) || 9999) || nm(a).localeCompare(nm(b), 'th'));
+const lbl = (c, u) => (rno(c, u) ? rno(c, u) + '. ' : '') + nm(u);
+const cw = c => c && c.w && Object.values(c.w).some(v => +v > 0) ? c.w : null;
+function tst(t, u) {
+    const s = t.s[u];
+    if (s && s.run) return 'run';
+    if (s && s.g != null) return 'ok';
+    if (s && !t.man) return 'wait';
+    if (t.man) return 'todo';
+    if (t.y == 'ex') return t.done && !t.open ? 'miss' : 'todo';
+    return t.d && t.d < today() ? 'miss' : 'todo';
+}
+function catSum(c, u, k) { let a = 0, m = 0; D.tasks.forEach(t => { if (t.c == c.id && cat(t) == k) { const s = t.s[u]; if (s && s.g != null && !s.run) { a += +s.g; m += +t.max; } } }); return { a, m }; }
+function gst(c, u) {
+    const r = calc(c.id, u), ts = D.tasks.filter(t => t.c == c.id), mi = ts.filter(t => tst(t, u) == 'miss'), wt = ts.filter(t => tst(t, u) == 'wait').length;
+    const f = mi.length ? 'ร' : (r.p != null && r.p < 50 ? '0' : '');
+    return { ...r, mi, wt, f, lab: f == 'ร' ? 'ร' : r.l };
+}
+const ftag = x => x.f == 'ร' ? `<span class="tg r">ติด ร (ขาด ${x.mi.length})</span>` : x.f == '0' ? '<span class="tg z">ติด 0</span>' : x.p == null ? '<span class="tg">-</span>' : '<span class="tg ม">ผ่าน</span>';
+function gcell(t, u, ed) {
+    const s = t.s[u], k = tst(t, u), tx = { ok: s && s.g != null ? s.g : '-', wait: 'รอตรวจ', miss: 'ขาดส่ง', todo: t.man ? '-' : 'ยังไม่ส่ง', run: 'กำลังสอบ' }[k];
+    return `<span class="cell c-${k}" ${ed ? `onclick="se('${t.id}','${u}')"` : ''}>${tx}</span>`;
+}
+function cpick(cs, k) {
+    sel[k] = cs.find(c => c.id == sel[k]) ? sel[k] : cs[0].id;
+    if (me.role == 'teacher' && cs.length <= 10) return `<div class=pill style="margin-bottom:10px">${cs.map(x => `<button class="${x.id == sel[k] ? 'on n' : ''}" onclick="sel.${k}='${x.id}';R()">${esc(x.sub)} · ${esc(x.name)}</button>`).join('')}</div>`;
+    return `<label class=fl>วิชา / ห้องเรียน<select onchange="sel.${k}=this.value;R()">${cs.map(x => `<option value=${x.id} ${x.id == sel[k] ? 'selected' : ''}>${esc(x.name + ' ' + x.sub)}${me.role == 'admin' ? ' — ครู' + esc(nm(x.o)) : ''}</option>`).join('')}</select></label>`;
+}
+const scTasks = (c, f) => D.tasks.filter(t => t.c == c.id && (!f || cat(t) == f)).sort((a, b) => CK.indexOf(cat(a)) - CK.indexOf(cat(b)) || (a.d || '').localeCompare(b.d || ''));
+ 
+/* ---------- ประวัติการบันทึกคะแนน ---------- */
+function scores() { return isT() ? scT() : scS(); }
+function scT() {
+    const cs = MC();
+    if (!cs.length) return head('ประวัติการบันทึกคะแนน') + emp('ยังไม่มีห้องเรียน');
+    const pk = cpick(cs, 'sc'), c = cs.find(x => x.id == sel.sc); sel.sv = sel.sv || 'm';
+    const tabs = [['m', '📋 ตารางคะแนน'], ['x', '⚠️ ติดตามงานค้าง'], ['s', '📊 สรุป / สัดส่วนคะแนน']];
+    return head('ประวัติการบันทึกคะแนน', `<button class="b g" onclick="scx('csv')">Excel</button> <button class="b g" onclick="scx()">PDF</button>`)
+        + `<div class=card>${pk}<div class=pill>${tabs.map(t => `<button class="${sel.sv == t[0] ? 'on n' : ''}" onclick="sel.sv='${t[0]}';R()">${t[1]}</button>`).join('')}</div></div>`
+        + (sel.sv == 'x' ? scX(c) : sel.sv == 's' ? scSum(c) : scM(c));
+}
+function scM(c) {
+    const f = sel.sf || '', q = (sel.sq || '').trim().toLowerCase(), tk = scTasks(c, f), grp = CK.map(k => ({ k, t: tk.filter(t => cat(t) == k) })).filter(x => x.t.length);
+    const st = ms(c).filter(u => !q || nm(u).toLowerCase().includes(q) || String(rno(c, u)) == q), all = grp.flatMap(x => x.t);
+    const ctl = `<div class=card><div class=r4><label class=fl>หมวดคะแนน<select onchange="sel.sf=this.value;R()"><option value="">ทั้งหมด</option>${CK.map(k => `<option value=${k} ${f == k ? 'selected' : ''}>${CATS[k]}</option>`).join('')}</select></label><label class=fl>ค้นหาชื่อ / เลขที่<input value="${esc(sel.sq || '')}" onchange="sel.sq=this.value;R()"></label></div><div class=pill style="margin-top:8px"><span class=mu style="align-self:center">เพิ่มหัวข้อคะแนน:</span>${CK.map(k => `<button onclick="sel.nc='${k}';tf('act')">+ ${CATS[k]}</button>`).join('')}<button onclick="tf('ex')">+ ข้อสอบออนไลน์</button><button onclick="mem('${c.id}')">👥 เลขที่ / นักเรียน</button></div><p class=mu style="margin-top:8px">คลิกคะแนนในช่องเพื่อแก้ไข · คลิกชื่อหัวข้อเพื่อกรอกทั้งห้อง · คลิกชื่อนักเรียนเพื่อดูรายละเอียด</p></div>`;
+    if (!c.m.length) return ctl + emp('ห้องนี้ยังไม่มีนักเรียน');
+    if (!tk.length) return ctl + emp('ยังไม่มีหัวข้อคะแนน กดปุ่ม “+ …” ด้านบนเพื่อเพิ่ม');
+    const th = `<tr><th rowspan=2 class=sticky1>เลขที่ · ชื่อ-นามสกุล</th>${grp.map(x => `<th colspan=${x.t.length}>${CATS[x.k]}</th>`).join('')}<th colspan=${CK.length}>รวมรายหมวด</th><th colspan=4>สรุป</th></tr><tr>${all.map(t => `<th style="cursor:pointer" title="${esc(t.t)}" onclick="tg('${t.id}')">${esc(t.t.length > 14 ? t.t.slice(0, 13) + '…' : t.t)}<br><small>/${t.max}</small></th>`).join('')}${CK.map(k => `<th>${CATS[k]}</th>`).join('')}<th>รวม</th><th>%</th><th>เกรด</th><th>สถานะ</th></tr>`;
+    const body = st.map(u => {
+        const x = gst(c, u);
+        return `<tr><td class=sticky1 style="text-align:left;cursor:pointer" onclick="sd('${c.id}','${u}')">${esc(lbl(c, u))}</td>${all.map(t => `<td>${gcell(t, u, 1)}</td>`).join('')}${CK.map(k => { const s = catSum(c, u, k); return `<td>${s.m ? s.a + '/' + s.m : '-'}</td>`; }).join('')}<td>${x.a}/${x.m}</td><td>${x.p == null ? '-' : x.p.toFixed(1)}</td><td><b>${x.lab}</b></td><td>${ftag(x)}</td></tr>`;
+    }).join('');
+    const span = CK.length + 4;
+    const foot = `<tr><td class=sticky1 style="text-align:left"><b>ค่าเฉลี่ย</b></td>${all.map(t => { const v = c.m.map(u => t.s[u]).filter(s => s && s.g != null && !s.run).map(s => +s.g); return `<td>${v.length ? (v.reduce((a, b) => a + b) / v.length).toFixed(1) : '-'}</td>`; }).join('')}<td colspan=${span}></td></tr><tr><td class=sticky1 style="text-align:left"><b>ส่งแล้ว</b></td>${all.map(t => `<td>${c.m.filter(u => t.s[u] && !t.s[u].run).length}/${c.m.length}</td>`).join('')}<td colspan=${span}></td></tr>`;
+    return ctl + `<div class="card tw"><table class=sc2>${th}${body}${foot}</table></div>`;
+}
+function scX(c) {
+    const st = ms(c).map(u => ({ u, x: gst(c, u) })), nr = st.filter(s => s.x.f == 'ร').length, nz = st.filter(s => s.x.f == '0').length, nw = st.reduce((a, s) => a + s.x.wt, 0);
+    const list = st.filter(s => s.x.f || s.x.wt).sort((a, b) => b.x.mi.length - a.x.mi.length);
+    return `<div class=grid>${sc(st.length - nr - nz, 'ผ่านเกณฑ์ (ปกติ)')}${sc(nr, 'ติด ร (มีงานขาดส่ง)')}${sc(nz, 'เสี่ยงติด 0 (<50%)')}${sc(nw, 'งานรอตรวจ')}</div><div class="card tw"><div class=hd style="margin:0 0 8px"><h3 style="margin:0">นักเรียนที่ต้องติดตาม</h3>${nr ? `<button class=b onclick="rem('${c.id}')">🔔 แจ้งเตือนทุกคนที่ติด ร</button>` : ''}</div>${list.length ? `<table><tr><th>นักเรียน</th><th style="text-align:left">งานที่ขาดส่ง</th><th>รอตรวจ</th><th>สถานะ</th><th></th></tr>${list.map(s => `<tr><td style="white-space:nowrap">${esc(lbl(c, s.u))}</td><td>${s.x.mi.map(t => `<span class="tg z" style="margin:2px;cursor:pointer" onclick="se('${t.id}','${s.u}')">${esc(t.t)}</span>`).join('') || '-'}</td><td>${s.x.wt || '-'}</td><td>${ftag(s.x)}</td><td class=ac>${s.x.mi.length ? `<button class="b s" onclick="rem('${c.id}','${s.u}')">🔔 ทวงงาน</button>` : ''}</td></tr>`).join('')}</table>` : emp('🎉 ไม่มีนักเรียนที่ต้องติดตาม')}</div>`;
+}
+function scSum(c) {
+    const st = ms(c).map(u => gst(c, u)), dist = {};
+    ['4', '3.5', '3', '2.5', '2', '1.5', '1', '0', 'ร', '-'].forEach(k => dist[k] = 0);
+    st.forEach(x => { dist[x.f == 'ร' ? 'ร' : x.gp == null ? '-' : String(x.gp)]++; });
+    const mx = Math.max(1, ...Object.values(dist)), ps = st.filter(x => x.p != null).map(x => x.p), av = ps.length ? ps.reduce((a, b) => a + b) / ps.length : null, w = c.w || {};
+    return `<div class=grid>${sc(c.m.length, 'นักเรียน')}${sc(av == null ? '-' : av.toFixed(1) + '%', 'คะแนนเฉลี่ยห้อง')}${sc(ps.length ? Math.max(...ps).toFixed(1) + '%' : '-', 'สูงสุด')}${sc(ps.length ? Math.min(...ps).toFixed(1) + '%' : '-', 'ต่ำสุด')}</div><div class=two><div class=card><h3>การกระจายเกรด (0 – 4)</h3>${Object.entries(dist).map(([k, v]) => `<div class=li style="gap:8px"><b style="width:64px">${k == 'ร' ? 'ร' : k == '-' ? 'ยังไม่มี' : 'เกรด ' + k}</b><div class=bar style="flex:1;margin:0"><i style="width:${v / mx * 100}%"></i></div><span>${v}</span></div>`).join('')}</div><div class=card><h3>สัดส่วนคะแนนรายหมวด (%)</h3><p class=mu>เว้นว่าง = รวมคะแนนดิบทุกหมวด · ใส่สัดส่วน เช่น 70 / 30 ระบบจะถ่วงน้ำหนักเฉพาะหมวดที่มีคะแนนแล้ว</p><div class=r2>${CK.map(k => `<label class=fl>${CATS[k]}<input type=number min=0 max=100 id=w_${k} value="${w[k] || ''}" placeholder="-"></label>`).join('')}</div><div class=ar><button class="b g" onclick="wsv(1)">ล้าง</button><button class=b onclick="wsv()">บันทึกสัดส่วน</button></div><hr style="margin:12px 0;border:0;border-top:1px solid var(--l)"><p class=mu><b>เกณฑ์เกรดไทย:</b> 80=4 · 75=3.5 · 70=3 · 65=2.5 · 60=2 · 55=1.5 · 50=1 · ต่ำกว่า 50 = 0<br><b>ร</b> = มีงานเลยกำหนดแต่ยังไม่ส่ง (รอการตัดสิน) · <b>ติด 0</b> = ส่งครบแล้วแต่ต่ำกว่า 50%</p></div></div>`;
+}
+function wsv(clear) {
+    const c = D.classes.find(x => x.id == sel.sc);
+    if (clear) delete c.w; else { c.w = {}; CK.forEach(k => { const v = +g('w_' + k); if (v > 0) c.w[k] = v; }); }
+    save(); R(); toast('บันทึกสัดส่วนคะแนนแล้ว');
+}
+function scRows(c) {
+    const tk = scTasks(c, '');
+    return [['เลขที่', 'ชื่อ-นามสกุล', ...tk.map(t => `${t.t} [${CATS[cat(t)]}] /${t.max}`), ...CK.map(k => 'รวม' + CATS[k]), 'รวม', 'เต็ม', 'ร้อยละ', 'เกรด', 'สถานะ'],
+        ...ms(c).map(u => { const x = gst(c, u); return [rno(c, u), nm(u), ...tk.map(t => { const k = tst(t, u), s = t.s[u]; return k == 'ok' ? s.g : { wait: 'รอตรวจ', miss: 'ขาดส่ง', todo: '-', run: 'กำลังสอบ' }[k]; }), ...CK.map(k => { const s = catSum(c, u, k); return s.m ? s.a : '-'; }), x.a, x.m, x.p == null ? '-' : x.p.toFixed(1), x.lab, x.f == 'ร' ? 'ติด ร' : x.f == '0' ? 'ติด 0' : 'ปกติ']; })];
+}
+const scx = f => { const c = D.classes.find(x => x.id == sel.sc); ex(scRows(c), 'ประวัติคะแนน_' + c.name + '_' + c.sub, f); };
+function se(tid, u) {
+    const t = D.tasks.find(x => x.id == tid), s = t.s[u] || {}, k = tst(t, u);
+    modal(esc(t.t) + ' — ' + esc(nm(u)), `<p class=mu>หมวด ${CATS[cat(t)]} · คะแนนเต็ม ${t.max} · สถานะ: ${{ ok: 'ตรวจแล้ว', wait: 'ส่งแล้ว รอตรวจ', miss: 'ขาดส่ง (เลยกำหนด)', todo: 'ยังไม่ส่ง', run: 'กำลังสอบ' }[k]}</p>` + fld('คะแนนที่ได้ (เว้นว่างได้)', 'f1', s.g ?? '', 'number') + `<label class=fl>การส่งงาน<select id=f2><option value=0 ${!t.s[u] ? 'selected' : ''}>ยังไม่ส่ง / ไม่มีคะแนน</option><option value=1 ${t.s[u] ? 'selected' : ''}>ส่งแล้ว / มีคะแนน</option></select></label>` + ((s.n || (s.f || []).length) ? `<button class="b s g" onclick="vw('${tid}','${u}')">ดูงานที่ส่ง</button>` : ''), `ses('${tid}','${u}')`);
+}
+function ses(tid, u) {
+    const t = D.tasks.find(x => x.id == tid), v = g('f1'), old = t.s[u];
+    if (v !== '' && isNaN(+v)) return toast('กรอกคะแนนเป็นตัวเลข');
+    if (v !== '') { const n = { ...(old || {}), t: (old || {}).t || today(), g: Math.max(0, Math.min(+v, t.max)) }; delete n.run; t.s[u] = n; }
+    else if (g('f2') == '1') { const n = { ...(old || {}), t: (old || {}).t || today(), g: null }; delete n.run; t.s[u] = n; }
+    else { if (old && old.f) old.f.forEach(f => fdel(f.id)); delete t.s[u]; }
+    save(); cm(); R(); toast('บันทึกคะแนนแล้ว');
+}
+function sd(cid, u) {
+    const c = D.classes.find(x => x.id == cid), x = gst(c, u), a = { ม: 0, ส: 0, ข: 0, ล: 0 };
+    Object.entries(D.att).forEach(([k, v]) => { if (k.split('|')[0] == cid && v[u]) a[v[u]]++; });
+    modal(esc(lbl(c, u)), `<div class=pill style="margin-bottom:8px">${ftag(x)}<span class=tg>${x.p == null ? '-' : x.p.toFixed(1) + '%'} · เกรด ${x.lab}</span><span class=tg>มา ${a.ม} · สาย ${a.ส} · ขาด ${a.ข} · ลา ${a.ล}</span></div>` + (D.tasks.filter(t => t.c == cid).map(t => `<div class=li><span>${esc(t.t)}<br><small class=mu>${CATS[cat(t)]}</small></span><span>${gcell(t, u, 0)} <small>/${t.max}</small></span></div>`).join('') || emp('ยังไม่มีหัวข้อคะแนน')) + `<div class=ar><button class="b g" onclick="cm();prev(tr('${u}'))">🖨️ ใบเกรด</button>${x.mi.length ? `<button class=b onclick="rem('${cid}','${u}');cm()">🔔 ทวงงาน</button>` : ''}</div>`);
+}
+function rem(cid, u) {
+    const c = D.classes.find(x => x.id == cid), l = u ? [u] : c.m; let n = 0;
+    l.forEach(x => {
+        const r = gst(c, x); if (!r.mi.length) return;
+        if (D.notes.some(z => z.to == x && z.c == cid && z.d == today() && z.k == 'rem')) return;
+        D.notes.push({ id: uid(), t: '⏰ งานค้างส่ง: ' + c.sub, b: 'ขาดส่ง: ' + r.mi.map(t => t.t).join(', ') + ' — กรุณาส่งโดยเร็วเพื่อไม่ให้ติด ร', c: cid, o: me.id, d: today(), to: x, k: 'rem' }); n++;
+    });
+    save(); R(); toast(n ? `ส่งแจ้งเตือนแล้ว ${n} คน` : 'ไม่มีรายการที่ต้องแจ้ง (หรือแจ้งไปแล้ววันนี้)');
+}
+function scS() {
+    const cs = MC(), t0 = today(), urg = [], pg = t => ({ hw: 'hw', act: 'act', ex: 'exam' }[t.y]);
+    cs.forEach(c => D.tasks.filter(t => t.c == c.id && !t.man).forEach(t => { const k = tst(t, me.id); if (k == 'miss' || (k == 'todo' && t.d && (new Date(t.d + 'T00:00') - new Date(t0 + 'T00:00')) / 864e5 <= 7)) urg.push({ c, t, k }); }));
+    urg.sort((a, b) => (a.k == 'miss' ? 0 : 1) - (b.k == 'miss' ? 0 : 1) || (a.t.d || '').localeCompare(b.t.d || ''));
+    return head('ประวัติคะแนนของฉัน', cs.length ? '<button class=b onclick="prev(tr(me.id))">🖨️ พิมพ์ใบเกรด</button>' : '')
+        + (cs.length ? `<div class=grid>${sc(gpa(me.id), 'GPA รวม')}${sc(urg.filter(x => x.k == 'miss').length, 'งานขาดส่ง (เสี่ยงติด ร)')}${sc(cs.filter(c => gst(c, me.id).f == '0').length, 'วิชาเสี่ยงติด 0')}</div>` : '')
+        + (urg.length ? `<div class=card style="border-left:4px solid #ef4444"><h3>⚠️ งานที่ต้องรีบส่ง</h3>${urg.map(x => `<div class=li><div><b>${esc(x.t.t)}</b><br><small class=mu>${esc(x.c.sub)} · กำหนด ${fd(x.t.d)}</small></div><span><span class="tg ${x.k == 'miss' ? 'z' : 'r'}">${x.k == 'miss' ? 'เลยกำหนด' : 'ใกล้กำหนด'}</span> <button class="b s" onclick="go('${pg(x.t)}')">ไปส่งงาน</button></span></div>`).join('')}</div>` : '')
+        + (cs.map(c => { const x = gst(c, me.id), tk = scTasks(c, ''); return `<div class=card><div class=hd style="margin:0 0 8px"><h3 style="margin:0">${esc(c.sub)} <small class=mu>${esc(c.name)} · ครู${esc(nm(c.o))}</small></h3><div>${ftag(x)} <span class=tg>${x.p == null ? '-' : x.p.toFixed(1) + '%'} · เกรด ${x.lab}</span></div></div>${tk.length ? `<div class=tw><table><tr><th style="text-align:left">รายการ</th><th>หมวด</th><th>กำหนด</th><th>คะแนน</th></tr>${tk.map(t => `<tr><td>${esc(t.t)}</td><td>${CATS[cat(t)]}</td><td>${t.y == 'ex' ? '-' : fd(t.d)}</td><td>${gcell(t, me.id, 0)} <small>/${t.max}</small></td></tr>`).join('')}</table></div>` : emp('ยังไม่มีหัวข้อคะแนน')}</div>`; }).join('') || emp('ยังไม่ได้เข้าร่วมห้องเรียน'));
+}
+ 
+/* ---------- เช็คชื่อ (ครูแก้ไขได้ทุกวัน / ทุกคน) ---------- */
+const AT = {}, ASTS = [['ม', 'มา'], ['ส', 'สาย'], ['ข', 'ขาด'], ['ล', 'ลา']];
+const atSave = () => { clearTimeout(AT.t); AT.t = setTimeout(() => { AT.t = 0; save(); }, 500); };
+function tAtt() {
+    const cs = MC();
+    if (!cs.length) return head('เช็คเวลาเรียน') + emp('ยังไม่มีห้องเรียน');
+    sel.ad = sel.ad || today(); const pk = cpick(cs, 'ac');
+    return head('เช็คชื่อ — ครูแก้ไขได้ทุกวัน') + `<div class=card>${pk}<div class=r3><label class=fl>วันที่<div class=ar style="margin:4px 0 0;justify-content:flex-start;flex-wrap:nowrap"><button class="b s g" onclick="adx(-1)">◀</button><input type=date value=${sel.ad} onchange="sel.ad=this.value||today();R()"><button class="b s g" onclick="adx(1)">▶</button><button class="b s g" onclick="sel.ad=today();R()">วันนี้</button></div></label><label class=fl>ค้นหา<input placeholder="ชื่อ หรือ เลขที่" value="${esc(sel.aq || '')}" oninput="sel.aq=this.value;atr()"></label></div><div id=attb>${atT()}</div></div>`;
+}
+const adx = n => { const d = new Date(sel.ad + 'T00:00'); d.setDate(d.getDate() + n); sel.ad = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); R(); };
+const atr = () => { const e = $('#attb'); if (e) e.innerHTML = atT(); };
+function atT() {
+    const c = MC().find(x => x.id == sel.ac); if (!c) return '';
+    if (!c.m.length) return emp('ห้องนี้ยังไม่มีนักเรียน');
+    const a = D.att[c.id + '|' + sel.ad] || {}, q = (sel.aq || '').trim().toLowerCase(), cnt = { ม: 0, ส: 0, ข: 0, ล: 0 };
+    c.m.forEach(u => { if (a[u]) cnt[a[u]]++; });
+    const un = c.m.length - cnt.ม - cnt.ส - cnt.ข - cnt.ล, rows = ms(c).filter(u => !q || nm(u).toLowerCase().includes(q) || String(rno(c, u)) == q);
+    return `<div class=pill style="margin:10px 0">${ASTS.map(s => `<span class="tg ${s[0]}">${s[1]} ${cnt[s[0]]}</span>`).join('')}<span class=tg>ยังไม่เช็ค ${un}</span></div><div class=tw><table><tr><th>เลขที่</th><th style="text-align:left">ชื่อ-นามสกุล</th><th style="text-align:left">สถานะ (คลิกเพื่อแก้ไข)</th></tr>${rows.map(u => `<tr><td>${rno(c, u) || '-'}</td><td>${esc(nm(u))}</td><td><div class=pill>${ASTS.map(s => `<button class="${a[u] == s[0] ? 'on ' + s[0] : ''}" onclick="atSet('${u}','${s[0]}')">${s[1]}</button>`).join('')}<button onclick="atSet('${u}','-')" title="ล้าง">✕</button></div></td></tr>`).join('')}</table></div><div class=ar><span class=mu>✓ บันทึกอัตโนมัติทุกครั้งที่แก้ไข</span><button class="b g s" onclick="atAll('ม')">ทุกคนมา</button><button class="b g s" onclick="atAll('ข')">ทุกคนขาด</button><button class="b g s" onclick="atAll('-')">ล้างวันนี้</button><button class="b g s" onclick="aex('csv')">Excel</button><button class="b g s" onclick="aex()">PDF</button></div>`;
+}
+function atSet(u, v) { const k = sel.ac + '|' + sel.ad; D.att[k] = D.att[k] || {}; if (v == '-') delete D.att[k][u]; else D.att[k][u] = v; if (!Object.keys(D.att[k]).length) delete D.att[k]; atr(); atSave(); }
+function atAll(v) {
+    const c = MC().find(x => x.id == sel.ac), k = c.id + '|' + sel.ad;
+    if (v == '-' && !confirm('ล้างข้อมูลเช็คชื่อของวันนี้ทั้งหมด?')) return;
+    D.att[k] = D.att[k] || {}; c.m.forEach(u => { if (v == '-') delete D.att[k][u]; else D.att[k][u] = v; });
+    if (!Object.keys(D.att[k]).length) delete D.att[k]; atr(); atSave();
+}
+function aex(f) { const c = MC().find(x => x.id == sel.ac), a = D.att[c.id + '|' + sel.ad] || {}; ex([['เลขที่', 'ชื่อ-นามสกุล', 'สถานะ'], ...ms(c).map(u => [rno(c, u), nm(u), L[a[u]] || 'ยังไม่เช็ค'])], 'เช็คชื่อ ' + c.name + ' ' + c.sub + ' ' + sel.ad, f); }
+function attHistoryView() {
+    const cs = MC();
+    if (!cs.length) return head('ประวัติเช็คชื่อ') + emp('ยังไม่มีห้องเรียน');
+    const pk = cpick(cs, 'hc'), c = cs.find(x => x.id == sel.hc), Y = new Date().getFullYear(); sel.hy = sel.hy || Y; sel.hm = sel.hm || ''; sel.hd = sel.hd || '';
+    const ds = Object.keys(D.att).filter(k => { const [cid, s] = k.split('|'); if (cid !== c.id) return false; const d = new Date(s + 'T00:00'); return d.getFullYear() == sel.hy && (!sel.hm || d.getMonth() + 1 == sel.hm) && (!sel.hd || d.getDate() == sel.hd); }).map(k => k.split('|')[1]).sort().reverse(), st = ms(c);
+    const months = [['', 'ทุกเดือน'], [1, 'มกราคม'], [2, 'กุมภาพันธ์'], [3, 'มีนาคม'], [4, 'เมษายน'], [5, 'พฤษภาคม'], [6, 'มิถุนายน'], [7, 'กรกฎาคม'], [8, 'สิงหาคม'], [9, 'กันยายน'], [10, 'ตุลาคม'], [11, 'พฤศจิกายน'], [12, 'ธันวาคม']];
+    const sm = st.map(u => { const k = { ม: 0, ส: 0, ข: 0, ล: 0 }; ds.forEach(d => { const v = (D.att[c.id + '|' + d] || {})[u]; if (v) k[v]++; }); const t = k.ม + k.ส + k.ข + k.ล; return { u, k, p: t ? (k.ม + k.ส) / t * 100 : null }; });
+    return head('ประวัติเช็คชื่อย้อนหลัง', `<button class=b onclick="sel.ac='${c.id}';sel.ad=today();go('att')">✏️ เช็คชื่อ / แก้ไขวันนี้</button>`)
+        + `<div class=card>${pk}<div class=r4><label class=fl>ปี<select onchange="sel.hy=this.value;R()">${[Y - 2, Y - 1, Y, Y + 1].map(y => `<option value="${y}" ${y == sel.hy ? 'selected' : ''}>${y + 543}</option>`).join('')}</select></label><label class=fl>เดือน<select onchange="sel.hm=this.value;R()">${months.map(m => `<option value="${m[0]}" ${m[0] == sel.hm ? 'selected' : ''}>${m[1]}</option>`).join('')}</select></label><label class=fl>วันที่<input type=number min=1 max=31 placeholder="ทุกวัน" value="${sel.hd}" onchange="sel.hd=this.value;R()"></label><label class=fl>เพิ่ม/แก้วันที่ย้อนหลัง<input type=date onchange="if(this.value){sel.ac='${c.id}';sel.ad=this.value;go('att')}"></label></div>`
+        + (ds.length ? `<p class=mu style="margin-top:10px">คลิกช่องสถานะเพื่อแก้ไขรายบุคคล · ✏️ แก้ทั้งวัน · 🗑 ลบทั้งวัน</p><div class=tw style="margin-top:6px"><table class=sc2><tr><th class=sticky1>วันที่</th>${st.map(u => `<th>${esc(lbl(c, u))}</th>`).join('')}<th></th></tr>${ds.map(dt => { const rec = D.att[c.id + '|' + dt] || {}; return `<tr><td class=sticky1><b>${fd(dt)}</b></td>${st.map(u => `<td><span class="tg ${rec[u] || '-'}" style="cursor:pointer" onclick="ah('${c.id}','${dt}','${u}')">${L[rec[u]] || '-'}</span></td>`).join('')}<td><button class="b s g" onclick="sel.ac='${c.id}';sel.ad='${dt}';go('att')">✏️</button> <button class="b s d" onclick="ahd('${c.id}','${dt}')">🗑</button></td></tr>`; }).join('')}</table></div><div class=ar><button class="b g" onclick="exportAttHistory('csv')">Excel</button><button class="b g" onclick="exportAttHistory('pdf')">PDF</button></div>` : emp('ไม่พบประวัติการเช็คชื่อตามเงื่อนไขที่เลือก')) + `</div>`
+        + (ds.length ? `<div class="card tw"><h3>สรุปการมาเรียนรายบุคคล (${ds.length} วัน)</h3><table><tr><th style="text-align:left">นักเรียน</th><th>มา</th><th>สาย</th><th>ขาด</th><th>ลา</th><th>% มาเรียน</th></tr>${sm.map(s => `<tr><td>${esc(lbl(c, s.u))}</td><td>${s.k.ม}</td><td>${s.k.ส}</td><td>${s.k.ข}</td><td>${s.k.ล}</td><td>${s.p == null ? '-' : `<span class="tg ${s.p < 80 ? 'z' : 'ม'}">${s.p.toFixed(0)}%</span>`}</td></tr>`).join('')}</table></div>` : '');
+}
+function ah(cid, dt, u) {
+    const cur = (D.att[cid + '|' + dt] || {})[u] || '-';
+    modal(esc(nm(u)) + ' — ' + fd(dt), `<div class=pill style="gap:8px;justify-content:center">${[...ASTS, ['-', 'ล้าง']].map(s => `<button class="${cur == s[0] ? 'on ' + (s[0] == '-' ? 'n' : s[0]) : ''}" style="padding:10px 18px;font-size:15px" onclick="ahs('${cid}','${dt}','${u}','${s[0]}')">${s[1]}</button>`).join('')}</div>`);
+}
+function ahs(cid, dt, u, v) { const k = cid + '|' + dt; D.att[k] = D.att[k] || {}; if (v == '-') delete D.att[k][u]; else D.att[k][u] = v; if (!Object.keys(D.att[k]).length) delete D.att[k]; save(); cm(); R(); toast('แก้ไขการเช็คชื่อแล้ว'); }
+function ahd(cid, dt) { if (!confirm('ลบข้อมูลเช็คชื่อวันที่ ' + fd(dt) + ' ทั้งวัน?')) return; delete D.att[cid + '|' + dt]; save(); R(); }
+function exportAttHistory(type) {
+    const c = D.classes.find(x => x.id == sel.hc), ds = Object.keys(D.att).filter(k => k.startsWith(c.id + '|')).map(k => k.split('|')[1]).sort(), st = ms(c);
+    ex([['วันที่', ...st.map(u => lbl(c, u))], ...ds.map(dt => { const r = D.att[c.id + '|' + dt] || {}; return [fd(dt), ...st.map(u => L[r[u]] || 'ยังไม่เช็ค')]; })], 'ประวัติเช็คชื่อ_' + c.name + '_' + c.sub, type);
+}
+ 
+/* ---------- เลขที่ประจำห้อง ---------- */
+function setNo(id, u, v) { const c = D.classes.find(x => x.id == id); c.no = c.no || {}; const n = Math.round(+v); if (n > 0) c.no[u] = n; else delete c.no[u]; save(); }
+function autoNo(id) { const c = D.classes.find(x => x.id == id); c.no = {}; [...c.m].sort((a, b) => nm(a).localeCompare(nm(b), 'th')).forEach((u, i) => c.no[u] = i + 1); save(); mem(id); R(); toast('เรียงเลขที่ตามชื่อแล้ว'); }
+ 
+/* ---------- วงล้อหรรษา ---------- */
+const WH = { rot: 0, it: [], used: [], hist: [], spin: 0 };
+function wItems() {
+    const c = MC().find(x => x.id == sel.wc); let it = [];
+    if (sel.wm == 'custom') it = (sel.wt || '').split('\n').map(s => s.trim()).filter(Boolean).map(s => ({ k: s, l: s }));
+    else if (c) { let l = ms(c); if (sel.wp) { const a = D.att[c.id + '|' + today()] || {}; l = l.filter(u => a[u] == 'ม' || a[u] == 'ส'); } it = l.map(u => ({ k: u, l: sel.wm == 'no' ? String(rno(c, u) || '?') : sel.wm == 'both' ? lbl(c, u) : nm(u) })); }
+    if (sel.wx) it = it.filter(x => !WH.used.includes(x.k));
+    return it;
+}
+function wheelV() {
+    const cs = MC(); sel.wm = sel.wm || 'name'; if (cs.length) sel.wc = cs.find(c => c.id == sel.wc) ? sel.wc : cs[0].id; WH.it = wItems();
+    return head('🎡 วงล้อหรรษา') + `<div class=wheelbox><div class=card style="text-align:center"><canvas id=wc></canvas><div id=wres style="min-height:56px;margin:8px 0"></div><button class=b id=wbtn style="font-size:18px;padding:12px 40px" onclick="wspin()">🎲 หมุนเลย!</button><p class=mu id=wcnt>${WH.it.length} รายการในวง</p></div><div><div class=card><h3>ตั้งค่าวงล้อ</h3>${cs.length ? cpick(cs, 'wc') : emp('ยังไม่มีห้องเรียน')}<label class=fl>สุ่มจาก<select onchange="sel.wm=this.value;R()">${[['name', 'ชื่อนักเรียน'], ['no', 'เลขที่'], ['both', 'เลขที่ + ชื่อ'], ['custom', 'กำหนดรายการเอง']].map(o => `<option value=${o[0]} ${sel.wm == o[0] ? 'selected' : ''}>${o[1]}</option>`).join('')}</select></label>${sel.wm == 'custom' ? `<label class=fl>รายการ (บรรทัดละ 1 รายการ)<textarea rows=5 onchange="sel.wt=this.value;wref()">${esc(sel.wt || '')}</textarea></label>` : `<label style="display:block;margin:6px 0"><input type=checkbox ${sel.wp ? 'checked' : ''} onchange="sel.wp=this.checked;R()"> เฉพาะคนที่มาเรียนวันนี้ (ตามการเช็คชื่อ)</label>`}<label style="display:block;margin:6px 0"><input type=checkbox ${sel.wx ? 'checked' : ''} onchange="sel.wx=this.checked;R()"> ไม่สุ่มซ้ำคนที่ถูกเลือกแล้ว</label><div class=ar><button class="b g s" onclick="WH.used=[];WH.hist=[];R()">รีเซ็ตรอบ</button></div></div><div class=card><h3>แบ่งกลุ่มสุ่ม</h3><div class=r2><label class=fl>จำนวนกลุ่ม<input type=number id=gn min=2 value="${sel.gn || 4}" onchange="sel.gn=this.value"></label><div class=ar style="align-items:end;margin:0"><button class=b onclick=wgrp()>สุ่มแบ่งกลุ่ม</button></div></div><div id=wgr></div></div><div class=card><h3>ประวัติการสุ่ม</h3><div id=whist>${whi()}</div></div></div></div>`;
+}
+const whi = () => WH.hist.map((h, i) => `<div class=li><span>${WH.hist.length - i}. ${esc(h)}</span></div>`).join('') || '<p class=mu>ยังไม่มีการสุ่ม</p>';
+function wref() { WH.it = wItems(); wdraw(); const e = $('#wcnt'); if (e) e.textContent = WH.it.length + ' รายการในวง'; }
+function wdraw() {
+    const cv = $('#wc'); if (!cv || !cv.getContext) return;
+    const it = WH.it, n = it.length, S = 420, dpr = window.devicePixelRatio || 1;
+    if (cv.width != S * dpr) { cv.width = S * dpr; cv.height = S * dpr; }
+    const x = cv.getContext('2d'); if (!x) return;
+    x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, S, S);
+    if (!n) { x.fillStyle = '#94a3b8'; x.font = '16px Prompt,sans-serif'; x.textAlign = 'center'; x.fillText('ไม่มีรายการในวงล้อ', S / 2, S / 2); return; }
+    const r = S / 2 - 14, seg = 2 * Math.PI / n; x.save(); x.translate(S / 2, S / 2);
+    for (let i = 0; i < n; i++) {
+        const a = WH.rot + i * seg; x.beginPath(); x.moveTo(0, 0); x.arc(0, 0, r, a, a + seg); x.closePath();
+        x.fillStyle = `hsl(${Math.round(i * 360 / n)} 72% ${i % 2 ? 56 : 48}%)`; x.fill(); x.strokeStyle = '#fff'; x.lineWidth = 2; x.stroke();
+        x.save(); x.rotate(a + seg / 2); x.fillStyle = '#fff'; x.textAlign = 'right'; x.font = `600 ${Math.max(9, Math.min(18, r * seg / 1.6))}px Prompt,sans-serif`;
+        x.fillText(it[i].l.length > 16 ? it[i].l.slice(0, 15) + '…' : it[i].l, r - 14, 5); x.restore();
+    }
+    x.beginPath(); x.arc(0, 0, 26, 0, 7); x.fillStyle = '#fff'; x.fill(); x.fillStyle = '#1a6df0'; x.font = '20px sans-serif'; x.textAlign = 'center'; x.fillText('🎡', 0, 7); x.restore();
+    x.beginPath(); x.moveTo(S / 2 - 15, 2); x.lineTo(S / 2 + 15, 2); x.lineTo(S / 2, 36); x.closePath(); x.fillStyle = '#ef4444'; x.fill(); x.strokeStyle = '#fff'; x.lineWidth = 2; x.stroke();
+}
+function wspin() {
+    if (WH.spin) return; WH.it = wItems(); wdraw(); const it = WH.it, n = it.length; if (!n) return toast('ไม่มีรายการให้สุ่ม');
+    WH.spin = 1; $('#wbtn').disabled = true; $('#wres').innerHTML = '';
+    const w = Math.floor(Math.random() * n), seg = 2 * Math.PI / n, tw = 1.5 * Math.PI - (w + .5) * seg, cur = WH.rot, P = 2 * Math.PI, d = (((tw - cur) % P) + P) % P + P * (5 + Math.floor(Math.random() * 3)), t0 = performance.now(), T = 5200;
+    const step = t => { const p = Math.min(1, (t - t0) / T); WH.rot = cur + d * (1 - Math.pow(1 - p, 3)); wdraw(); if (p < 1) requestAnimationFrame(step); else { WH.spin = 0; wdone(it[w]); } };
+    requestAnimationFrame(step);
+}
+function wdone(x) {
+    WH.hist.unshift(x.l); if (sel.wx) WH.used.push(x.k); beep();
+    const e = $('#wres'); if (e) e.innerHTML = `<div style="font-size:30px;font-weight:600;color:var(--p)">🎉 ${esc(x.l)}</div>`;
+    const b = $('#wbtn'); if (b) b.disabled = false; const h = $('#whist'); if (h) h.innerHTML = whi();
+}
+function beep() { try { const a = new (window.AudioContext || window.webkitAudioContext)(), o = a.createOscillator(), v = a.createGain(); o.connect(v); v.connect(a.destination); o.frequency.value = 880; v.gain.setValueAtTime(.15, a.currentTime); v.gain.exponentialRampToValueAtTime(.001, a.currentTime + .5); o.start(); o.stop(a.currentTime + .5); } catch (e) {} }
+function wgrp() {
+    const c = MC().find(x => x.id == sel.wc), l = sel.wm == 'custom' ? WH.it.map(x => x.l) : c ? ms(c).map(u => lbl(c, u)) : [];
+    if (!l.length) return toast('ไม่มีรายชื่อ');
+    const n = Math.max(2, Math.min(+g('gn') || 4, l.length)), a = [...l];
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    const gs = Array.from({ length: n }, () => []); a.forEach((x, i) => gs[i % n].push(x));
+    $('#wgr').innerHTML = gs.map((x, i) => `<div class=li style="display:block"><b>กลุ่ม ${i + 1}</b> <small class=mu>(${x.length} คน)</small><br>${x.map(esc).join(', ')}</div>`).join('');
+}
+ 
+/* ---------- ตัวช่วยบนหน้าหลัก + hook ---------- */
+const _home = home;
+home = () => {
+    const h = _home(), cs = MC(); let add = '';
+    if (isT()) { let nr = 0, nz = 0; cs.forEach(c => c.m.forEach(u => { const x = gst(c, u); if (x.f == 'ร') nr++; else if (x.f == '0') nz++; })); if (nr || nz) add = `<div class=card style="border-left:4px solid #f59e0b"><b>⚠️ ต้องติดตาม:</b> ติด ร ${nr} รายการ · เสี่ยงติด 0 ${nz} รายการ <button class="b s" style="margin-left:8px" onclick="go('scores')">ดูประวัติคะแนน</button></div>`; }
+    else { const n = cs.reduce((a, c) => a + D.tasks.filter(t => t.c == c.id && !t.man && tst(t, me.id) == 'miss').length, 0); if (n) add = `<div class=card style="border-left:4px solid #ef4444"><b>⚠️ คุณมีงานขาดส่ง ${n} รายการ</b> — ส่งเร็วที่สุดเพื่อไม่ให้ติด ร <button class="b s" style="margin-left:8px" onclick="go('scores')">ดูรายละเอียด</button></div>`; }
+    return add ? h.replace('</div></div>', '</div></div>' + add) : h;
+};
+const _R = R;
+R = function () { _R(); if (V == 'wheel') wdraw(); };
+ 
         window.onerror = m => { console.error(m); toast('เกิดข้อผิดพลาด: ' + m); };
  
        setInterval(async () => {
-            if (!me || document.hidden || $('#m').innerHTML || $('#m2').innerHTML) return;
+            if (!me || document.hidden || $('#m').innerHTML || $('#m2').innerHTML || PEND > 0 || AT.t || WH.spin) return;
             const a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) return;
             if (await loadD()) { reme(); R(); }
         }, 20000);
